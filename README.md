@@ -27,15 +27,16 @@ See the header of `scripts/build-kernel.sh` for details.
 
 ### Releasing
 
-Push a `kernel-<version>` tag: the [`kernels`](.github/workflows/kernels.yml)
-workflow builds both architectures on GitHub arm64/x86_64 runners and
-creates a release with `vmlinux-sandal-<arch>` + `SHA256SUMS` assets.
+Releases are versioned by tag: `kernel-X.Y.Z` (starting at
+`kernel-0.1.0`), not by the kernel version — the kernel version is
+pinned in `scripts/kernel.config` / `scripts/kernel-x86.fragment` and
+bumped there independently. Push a `kernel-X.Y.Z` tag: the
+[`kernels`](.github/workflows/kernels.yml) workflow builds both
+architectures on GitHub arm64/x86_64 runners and creates a release
+with `vmlinux-sandal-<arch>` + `SHA256SUMS` assets.
 
-The kernels are built from the configs at the tagged commit, so bump the
-version pinned in `scripts/kernel.config` / `scripts/kernel-x86.fragment`
-*before* tagging. `releases/latest` then points at the new release, and
-sandal's `scripts/fetch-kernel.sh` (`make kernel`) follows it
-automatically.
+`releases/latest` then points at the new release, and sandal's
+`scripts/fetch-kernel.sh` (`make kernel`) follows it automatically.
 
 ## License
 

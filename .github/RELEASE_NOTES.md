@@ -23,8 +23,9 @@ and verifies the download against `SHA256SUMS` from the same release.
 
 ## Updating
 
-The kernels are built from the configs at the tagged commit — the tag name
-is a label, not a build input. To ship a new kernel version: bump the
-version pinned in the configs, then push a `kernel-<version>` tag. To
-retry a failed run, delete and re-push the tag; partially uploaded assets
-are replaced.
+The kernels are built from the configs at the tagged commit. The tag
+versions the release (`kernel-X.Y.Z`), not the kernel: the kernel
+version is pinned in the configs (`scripts/kernel.config`,
+`scripts/kernel-x86.fragment`) and read from there. To ship a release,
+push the next `kernel-X.Y.Z` tag; to retry a failed run, delete and
+re-push the tag. Partially uploaded assets are replaced.

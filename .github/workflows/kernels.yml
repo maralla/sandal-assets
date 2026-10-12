@@ -3,11 +3,12 @@
 #
 #   https://github.com/maralla/sandal-assets/releases/latest/download/vmlinux-sandal-<arch>
 #
-# The kernels are built from the configs at the tagged commit — the tag name
-# is a label, not a build input. To ship a new kernel version: bump the
-# version pinned in scripts/kernel.config / scripts/kernel-x86.fragment,
-# then push a kernel-<version> tag. Re-push the tag (delete + push) to
-# retry a failed run; partially uploaded assets are replaced (--clobber).
+# The kernels are built from the configs at the tagged commit — the tag
+# versions the release, not the kernel: the kernel version is pinned in
+# scripts/kernel.config / scripts/kernel-x86.fragment. To ship a release:
+# bump the kernel pin there if it changed, then push a kernel-X.Y.Z tag.
+# Re-push the tag (delete + push) to retry a failed run; partially
+# uploaded assets are replaced (--clobber).
 
 name: kernels
 
