@@ -32,7 +32,7 @@
 #   minimal config, not a delta) and produces a stripped ELF vmlinux with the
 #   PVH 32-bit entry note, booted directly by the VMM (no firmware, no
 #   bootloader). Requires gcc, flex and bison. KERNEL_VERSION defaults to
-#   6.12.70 (keep in sync with the fragment's base).
+#   7.2.10 (keep in sync with the fragment's base).
 
 set -euo pipefail
 
@@ -77,7 +77,7 @@ aarch64_kernel_version() {   # aarch64_kernel_version [OVERRIDE]
     fi
     if [ -z "$kver" ]; then
         error "could not detect kernel version from scripts/kernel.config"
-        echo "Pass it explicitly: $0 aarch64 [HOST] 6.12.70" >&2
+        echo "Pass it explicitly: $0 aarch64 [HOST] 7.2.10" >&2
         exit 1
     fi
     printf '%s\n' "$kver"
@@ -149,10 +149,12 @@ build_aarch64_ssh() {   # build_aarch64_ssh HOST [KERNEL_VERSION]
         cd $remote_dir/linux-$kver
         cp ../kernel.config .config
         make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig 2>&1 | tail -1
-        # Force-enable SP804 in case olddefconfig dropped it due to unmet deps.
+        # Force-enable SP804 in case olddefconfig dropped it due to unmet deps
+        # (HAVE_ARM_TIMER_SP804 no longer exists; ARM_TIMER_SP804=y is the
+        # real gate and is verified to stick).
         if ! grep -q '^CONFIG_ARM_TIMER_SP804=y' .config; then
             echo 'Enabling CONFIG_ARM_TIMER_SP804...'
-            scripts/config --set-val HAVE_ARM_TIMER_SP804 y --set-val ARM_TIMER_SP804 y
+            scripts/config --enable ARM_TIMER_SP804
             make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig 2>&1 | tail -1
         fi
         make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j\$(nproc) Image 2>&1 | tail -3
@@ -182,10 +184,11 @@ build_aarch64_native() {   # build_aarch64_native [KERNEL_VERSION]
     cp "$SCRIPT_DIR/kernel.config" .config
     make olddefconfig 2>&1 | tail -1
     # Force-enable SP804 in case olddefconfig dropped it due to unmet deps
-    # (same dance as the SSH path).
+    # (HAVE_ARM_TIMER_SP804 no longer exists; ARM_TIMER_SP804=y is the real
+    # gate and is verified to stick).
     if ! grep -q '^CONFIG_ARM_TIMER_SP804=y' .config; then
         echo 'Enabling CONFIG_ARM_TIMER_SP804...'
-        scripts/config --set-val HAVE_ARM_TIMER_SP804 y --set-val ARM_TIMER_SP804 y
+        scripts/config --enable ARM_TIMER_SP804
         make olddefconfig 2>&1 | tail -1
     fi
     make -j"$(nproc)" Image 2>&1 | tail -3
@@ -198,7 +201,7 @@ build_aarch64_native() {   # build_aarch64_native [KERNEL_VERSION]
 
 build_x86_64() {   # build_x86_64 [KERNEL_VERSION]
     local fragment="$SCRIPT_DIR/kernel-x86.fragment"
-    local kver="${1:-6.12.70}"   # keep in sync with kernel-x86.fragment's base
+    local kver="${1:-7.2.10}"   # keep in sync with kernel-x86.fragment's base
     local build_dir="$PROJECT_DIR/kernel-build"
 
     require_tools gcc flex bison

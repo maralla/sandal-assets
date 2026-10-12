@@ -1,5 +1,5 @@
 # sandal x86_64 guest kernel fragment — a COMPLETE minimal config applied
-# over allnoconfig (see build-kernel.sh x86_64).
+# over allnoconfig (see build-kernel.sh x86_64). Base: linux 7.2.10.
 #
 # The VMM is a KVM userspace VMM with:
 #   - PVH direct boot (ELF vmlinux, hvm_start_info) — no firmware, no ACPI
@@ -13,6 +13,16 @@
 # Everything not listed here stays at allnoconfig (=n). Hidden symbols keep
 # their Kconfig defaults (allnoconfig can only touch visible ones), which
 # covers the quietly-required plumbing (futexes, epoll, CRC helpers, ...).
+#
+# 7.2.10 notes (vs the 6.12.70 base this fragment was written for):
+#   - The preemption model choice now defaults to PREEMPT_LAZY on x86/arm64
+#     (they select ARCH_HAS_PREEMPT_LAZY) and PREEMPT_NONE is no longer
+#     selectable. The prebuilt kernel runs PREEMPT_LAZY; the integration
+#     suite passes with it.
+#   - Lines for X86_IO_APIC=n, IPV6=n, PERF_EVENTS=n, VT=n, ELF_CORE=n,
+#     VIRTIO_RNG=y, HIGHMEM=n and RANDOMIZE_BASE=n were dropped: they never
+#     had effect in 6.12.70 either (see the notes below and the shipped
+#     6.12.70 build config, which already ran the first five =y).
 
 # ── base architecture (allnoconfig needs these spelled out) ────────────
 CONFIG_64BIT=y
@@ -21,6 +31,9 @@ CONFIG_EXPERT=y
 # The local APIC: KVM creates a vLAPIC per vCPU; using its timer beats PIT
 # polling and gives proper time handling. Without it the kernel disables
 # the apic facility entirely ("APIC: Switched APIC routing to: noop").
+# (X86_IO_APIC comes along: def_bool y behind X86_LOCAL_APIC since 6.12.
+# No IO-APIC is discovered without ACPI/MPS tables, so the IRQ path stays
+# the emulated i8259 PIC.)
 CONFIG_X86_LOCAL_APIC=y
 CONFIG_PRINTK_TIME=y
 
@@ -30,19 +43,22 @@ CONFIG_HYPERVISOR_GUEST=y
 CONFIG_PARAVIRT=y
 CONFIG_KVM_GUEST=y
 CONFIG_PARAVIRT_CLOCK=y
-# Deterministic boot: the ELF entry point is the load address.
-CONFIG_RANDOMIZE_BASE=n
+# Deterministic boot: the ELF entry point is the load address. KASLR is
+# off because RELOCATABLE stays not-set (verified in the built config);
+# RANDOMIZE_BASE is unreachable behind it.
 
-# ── single vCPU, flat memory: skips SMP/NUMA/highmem bring-up ──────────
+# ── single vCPU, flat memory: skips SMP/NUMA/MCE bring-up ──────────────
+# (HIGHMEM dropped: x86_64 never had it. NUMA is unreachable behind
+# SMP=n; kept here to document the intent.)
 CONFIG_SMP=n
 CONFIG_NUMA=n
-CONFIG_X86_IO_APIC=n
 CONFIG_X86_MCE=n
-CONFIG_HIGHMEM=n
 
 # ── virtio (mmio transport only, no PCI) ────────────────────────────────
 # BLK_DEV/NETDEVICES are menu gates: without them VIRTIO_BLK/VIRTIO_NET are
 # silently dropped by olddefconfig (allnoconfig turns the menus off).
+# (VIRTIO_RNG dropped: the symbol does not exist in 6.12 or 7.2 —
+# HW_RANDOM_VIRTIO below is the real virtio-rng gate.)
 CONFIG_PCI=n
 CONFIG_BLK_DEV=y
 CONFIG_NETDEVICES=y
@@ -53,23 +69,20 @@ CONFIG_VIRTIO_MMIO_CMDLINE_DEVICES=y
 CONFIG_VIRTIO_BLK=y
 CONFIG_VIRTIO_NET=y
 CONFIG_VIRTIO_CONSOLE=y
-CONFIG_VIRTIO_RNG=y
 CONFIG_HW_RANDOM=y
 CONFIG_HW_RANDOM_VIRTIO=y
 CONFIG_VIRTIO_FS=y
 CONFIG_FUSE_FS=y
 
 # ── networking (user-space NAT behind virtio-net) ───────────────────────
-# IPv4 only: the VMM's user-space netstack hands out an IPv4 address and
-# DNS resolver; dropping IPv6 skips the v6 init (sit/seg6/IOAM/icmp6
-# sockets) which costs several ms of guest boot.
+# The VMM's user-space netstack hands out an IPv4 address and DNS resolver.
+# (IPV6=n and PERF_EVENTS=n dropped: both default to y upstream and were
+# already =y in the shipped 6.12.70 kernel; the boot-time rationale never
+# materialized — the integration suite, boot included, passes with both.)
 CONFIG_NET=y
 CONFIG_INET=y
-CONFIG_IPV6=n
 CONFIG_UNIX=y
 CONFIG_PACKET=y
-# perf/PMU init is pure startup cost for a guest that never profiles.
-CONFIG_PERF_EVENTS=n
 
 # ── filesystems ─────────────────────────────────────────────────────────
 CONFIG_EXT4_FS=y
@@ -89,16 +102,19 @@ CONFIG_BINFMT_SCRIPT=y
 CONFIG_EPOLL=y
 
 # ── console ─────────────────────────────────────────────────────────────
+# (VT=n dropped: VT defaults to y upstream and was already =y in the
+# shipped 6.12.70 kernel; virtio-console hvc0 remains the console.)
 CONFIG_TTY=y
 CONFIG_SERIAL_8250=y
 CONFIG_SERIAL_8250_CONSOLE=y
-CONFIG_VT=n
 
 # ── keep it small and quiet ─────────────────────────────────────────────
+# (ELF_CORE=n dropped: COREDUMP defaults to y upstream and ELF_CORE was
+# already =y in the shipped 6.12.70 kernel; ~4k of text, no security
+# boundary.)
 CONFIG_MODULES=n
 CONFIG_DEBUG_INFO_NONE=y
 CONFIG_ACPI=n
-CONFIG_ELF_CORE=n
 # /dev/mem: the crafted export/resize helpers mmap the hypercall page
 # through it (userspace MMIO write → KVM exit → VMM handler).
 CONFIG_DEVMEM=y
