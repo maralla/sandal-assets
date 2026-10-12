@@ -1,0 +1,5 @@
+# Kernel build scratch (downloaded source trees and tarballs)
+/kernel-build/
+
+# Built kernels (released as assets, never committed)
+/vmlinux-sandal-*

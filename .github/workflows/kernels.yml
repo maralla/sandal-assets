@@ -1,0 +1,82 @@
+# Build the prebuilt sandal guest kernels and publish them as release
+# assets. sandal fetches them with `make kernel` (scripts/fetch-kernel.sh):
+#
+#   https://github.com/maralla/sandal-assets/releases/latest/download/vmlinux-sandal-<arch>
+#
+# The kernels are built from the configs at the tagged commit — the tag name
+# is a label, not a build input. To ship a new kernel version: bump the
+# version pinned in scripts/kernel.config / scripts/kernel-x86.fragment,
+# then push a kernel-<version> tag. Re-push the tag (delete + push) to
+# retry a failed run; partially uploaded assets are replaced (--clobber).
+
+name: kernels
+
+on:
+  push:
+    tags: ['kernel-*']
+
+jobs:
+  build:
+    name: Build (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-24.04
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # libelf-dev: the x86_64 kernel builds objtool (CONFIG_OBJTOOL=y),
+      # which links libelf; harmless on aarch64, which does not.
+      - name: Install build dependencies
+        run: sudo apt-get update && sudo apt-get install -y gcc flex bison libelf-dev
+
+      - name: Build kernel
+        run: scripts/build-kernel.sh ${{ matrix.arch }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernel-${{ matrix.arch }}
+          path: vmlinux-sandal-${{ matrix.arch }}
+          if-no-files-found: error
+
+  release:
+    name: Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Collect artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release
+          pattern: kernel-*
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          mv release/kernel-*/vmlinux-sandal-* .
+          rm -rf release
+          sha256sum vmlinux-sandal-x86_64 vmlinux-sandal-aarch64 > SHA256SUMS
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            # Re-run after a partial failure: replace the uploaded assets.
+            gh release upload "$TAG" \
+              vmlinux-sandal-x86_64 vmlinux-sandal-aarch64 SHA256SUMS --clobber
+          else
+            gh release create "$TAG" \
+              vmlinux-sandal-x86_64 vmlinux-sandal-aarch64 SHA256SUMS \
+              --title "sandal guest kernels ($TAG)" \
+              --notes-file .github/RELEASE_NOTES.md
+          fi
