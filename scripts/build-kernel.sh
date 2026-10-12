@@ -150,8 +150,8 @@ build_aarch64_ssh() {   # build_aarch64_ssh HOST [KERNEL_VERSION]
         cp ../kernel.config .config
         make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig 2>&1 | tail -1
         # Force-enable SP804 in case olddefconfig dropped it due to unmet deps
-        # (HAVE_ARM_TIMER_SP804 no longer exists; ARM_TIMER_SP804=y is the
-        # real gate and is verified to stick).
+        # (ARM_TIMER_SP804=y is the real gate — there is no HAVE_ wrapper
+        # symbol — and is verified to stick).
         if ! grep -q '^CONFIG_ARM_TIMER_SP804=y' .config; then
             echo 'Enabling CONFIG_ARM_TIMER_SP804...'
             scripts/config --enable ARM_TIMER_SP804
@@ -184,8 +184,8 @@ build_aarch64_native() {   # build_aarch64_native [KERNEL_VERSION]
     cp "$SCRIPT_DIR/kernel.config" .config
     make olddefconfig 2>&1 | tail -1
     # Force-enable SP804 in case olddefconfig dropped it due to unmet deps
-    # (HAVE_ARM_TIMER_SP804 no longer exists; ARM_TIMER_SP804=y is the real
-    # gate and is verified to stick).
+    # (ARM_TIMER_SP804=y is the real gate — there is no HAVE_ wrapper
+    # symbol — and is verified to stick).
     if ! grep -q '^CONFIG_ARM_TIMER_SP804=y' .config; then
         echo 'Enabling CONFIG_ARM_TIMER_SP804...'
         scripts/config --enable ARM_TIMER_SP804
