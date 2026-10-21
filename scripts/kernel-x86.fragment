@@ -93,6 +93,26 @@ CONFIG_DEVTMPFS=y
 CONFIG_DEVTMPFS_MOUNT=y
 CONFIG_UNIX98_PTYS=y
 
+# ── memory hotplug: boot floor + grow on demand ───────────────────────
+# The VMM maps the full memory cap as one lazy KVM slot but declares only
+# a boot floor in the PVH memmap; the portagent hot-adds the rest in
+# section-sized chunks when a workload's MemAvailable descends below a
+# low-water mark, up to the cap the VMM passes it. Memory that is never
+# probed stays a lazy zero mapping on the host: resident cost tracks what
+# the workload actually touches, not the cap. ARCH_MEMORY_PROBE is
+# def_bool y behind MEMORY_HOTPLUG and provides /sys/devices/system/memory/
+# probe; the portagent onlines each probed block itself.
+CONFIG_MEMORY_HOTPLUG=y
+CONFIG_ARCH_MEMORY_PROBE=y
+
+# ── vsock: per-command host channels ───────────────────────────────────
+# The userspace device (see src/virtio/vsock.rs) bridges each guest
+# vsock connection to a host channel the VMM owns — one socket per
+# command, concurrent foreground execution with per-connection
+# attribution. af_vsock in the guest; no host kernel vsock anywhere.
+CONFIG_VSOCKETS=y
+CONFIG_VIRTIO_VSOCKETS=y
+
 # ── process/exec plumbing ───────────────────────────────────────────────
 CONFIG_MULTIUSER=y
 CONFIG_BINFMT_ELF=y
