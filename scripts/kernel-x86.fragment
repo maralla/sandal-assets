@@ -6,7 +6,8 @@
 #   - virtio-mmio devices registered via the `virtio_mmio.device=` cmdline
 #     parameter (no PCI bus emulation), IRQs from the legacy ISA range
 #     (delivered through the in-kernel i8259 PIC)
-#   - virtio-console (hvc0) as the interactive console, 8250 for earlycon
+#   - vsock as the one session transport (no console device at all); the
+#     8250 serial carries earlycon for boot diagnostics
 #   - ext2 (via the ext4 driver) root on /dev/vda, overlayfs upper on /dev/vdb
 #   - virtiofs (FUSE) for --share directories, virtio-rng for entropy
 #
@@ -67,7 +68,6 @@ CONFIG_VIRTIO_MMIO=y
 CONFIG_VIRTIO_MMIO_CMDLINE_DEVICES=y
 CONFIG_VIRTIO_BLK=y
 CONFIG_VIRTIO_NET=y
-CONFIG_VIRTIO_CONSOLE=y
 CONFIG_HW_RANDOM=y
 CONFIG_HW_RANDOM_VIRTIO=y
 CONFIG_VIRTIO_FS=y
@@ -120,8 +120,13 @@ CONFIG_BINFMT_SCRIPT=y
 CONFIG_EPOLL=y
 
 # ── console ─────────────────────────────────────────────────────────────
-# VT defaults to y upstream and cannot be pinned off; virtio-console
-# hvc0 remains the interactive console.
+# VT defaults to y upstream and cannot be pinned off. The printk console
+# is the SERIAL port (console=ttyS0): the session transport is vsock (the
+# guest's vsockd bridges it to a pty), so kernel messages must never ride
+# the session stream — the VMM's 8250 stub serves LSR=TX-ready and either
+# mirrors the bytes at -v or absorbs them. The earlycon (8250_early.c
+# builds under SERIAL_8250) carries the earliest boot output and hands
+# over to the ttyS0 console when the driver comes up.
 CONFIG_TTY=y
 CONFIG_SERIAL_8250=y
 CONFIG_SERIAL_8250_CONSOLE=y
