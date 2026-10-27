@@ -43,6 +43,29 @@ CONFIG_HYPERVISOR_GUEST=y
 CONFIG_PARAVIRT=y
 CONFIG_KVM_GUEST=y
 CONFIG_PARAVIRT_CLOCK=y
+
+# ── CPU mitigations ──────────────────────────────────────────────────
+# The guest runs model-generated commands across a hypervisor boundary;
+# the spectre-class defenses are part of the isolation contract.
+# allnoconfig turns CPU_MITIGATIONS off (its Kconfig default is y), which
+# kills the whole block beneath it — retpoline, rethunk, page-table
+# isolation, buffer clears — and the kernel boots with "no mitigation
+# available" (verified: the prebuilt vmlinux had zero
+# __x86_indirect_thunk symbols). The retpoline/rethunk build needs the
+# compiler thunk support (gcc ≥ 8 ✓).
+CONFIG_CPU_MITIGATIONS=y
+CONFIG_MITIGATION_RETPOLINE=y
+CONFIG_MITIGATION_RETHUNK=y
+CONFIG_MITIGATION_PAGE_TABLE_ISOLATION=y
+
+# ── Tick and diagnosability ──────────────────────────────────────────
+# NO_HZ_IDLE: a parked VM (the pool's common state) emits no timer
+# exits at all. IKCONFIG_PROC: /proc/config.gz — the kernel config
+# becomes auditable on the running guest instead of reverse-engineered.
+CONFIG_NO_HZ_IDLE=y
+CONFIG_HZ_250=y
+CONFIG_IKCONFIG=y
+CONFIG_IKCONFIG_PROC=y
 # Deterministic boot: the ELF entry point is the load address. KASLR is
 # off because RELOCATABLE stays not-set (verified in the built config);
 # RANDOMIZE_BASE is unreachable behind it.
